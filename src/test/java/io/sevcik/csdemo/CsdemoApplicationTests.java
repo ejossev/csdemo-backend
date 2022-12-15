@@ -68,7 +68,7 @@ class CsdemoApplicationTests {
     }
     Long createTestSmoothie(String name) throws Exception {
         deleteTestSmoothie(name);
-        String createBody = "{\"name\":\"" + name + "\", \"description\":\"super smoothie\", \"nutritions\":\"TBD\"}";
+        String createBody = "{\"name\":\"" + name + "\", \"description\":\"super smoothie\", \"nutritions\":{\"calories\":1200}}";
         String authHeader = loginUser(testAdmin);
         mvc.perform(
                 post("/api/smoothie")
@@ -126,7 +126,7 @@ class CsdemoApplicationTests {
 
     @Test
     void cannotCreateSmoothieNoAuth() throws Exception {
-        String createBody = "{\"name\":\"TestSmoothie\", \"description\":\"super smoothie\", \"nutritions\":\"TBD\"}";
+        String createBody = "{\"name\":\"TestSmoothie\", \"description\":\"super smoothie\", \"nutritions\":{\"calories\":1200}}";
         mvc.perform(
                 post("/api/smoothie")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -137,7 +137,7 @@ class CsdemoApplicationTests {
     void loginUserCannotCreateSmoothie() throws Exception {
         createTestUsers();
         String loginBody = "{\"username\":\"" + testUser + "\", \"password\":\"" + testPassword + "\"}";
-        String createBody = "{\"name\":\"TestSmoothie\", \"description\":\"super smoothie\", \"nutritions\":\"TBD\"}";
+        String createBody = "{\"name\":\"TestSmoothie\", \"description\":\"super smoothie\", \"nutritions\":{\"calories\":1200}}";
         MvcResult rv = mvc.perform(
                 post("/api/auth/signin")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -159,7 +159,7 @@ class CsdemoApplicationTests {
     void loginAdminCreateSmoothie() throws Exception {
         createTestUsers();
         String loginBody = "{\"username\":\"" + testAdmin + "\", \"password\":\"" + testPassword + "\"}";
-        String createBody = "{\"name\":\"TestSmoothie\", \"description\":\"super smoothie\", \"nutritions\":\"TBD\"}";
+        String createBody = "{\"name\":\"TestSmoothie\", \"description\":\"super smoothie\", \"nutritions\":{\"calories\":1200}}";
         MvcResult rv = mvc.perform(
                 post("/api/auth/signin")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -188,7 +188,7 @@ class CsdemoApplicationTests {
     void loginAdminCreateSmoothie2ndSmoothieWithSameNameFails() throws Exception {
         createTestUsers();
         String loginBody = "{\"username\":\"" + testAdmin + "\", \"password\":\"" + testPassword + "\"}";
-        String createBody = "{\"name\":\"TestSmoothie\", \"description\":\"super smoothie\", \"nutritions\":\"TBD\"}";
+        String createBody = "{\"name\":\"TestSmoothie\", \"description\":\"super smoothie\", \"nutritions\":{\"calories\":1200}}";
         MvcResult rv = mvc.perform(
                 post("/api/auth/signin")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -287,7 +287,7 @@ class CsdemoApplicationTests {
         Long unknownId = existingId + 50;
         String admToken = loginUser(testAdmin);
         String usrToken = loginUser(testUser);
-        String changeBody = "{\"name\":\"Smoothie#2\", \"description\":\"super smoothie\", \"nutritions\":\"TBD\"}";
+        String changeBody = "{\"name\":\"Smoothie#2\", \"description\":\"super smoothie\", \"nutritions\":{\"calories\":1200}}";
 
         mvc.perform(
                 put("/api/smoothie/" + existingId)
