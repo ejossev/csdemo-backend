@@ -15,6 +15,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,6 +53,39 @@ class CsdemoApplicationTests {
         User userAdmin = userRepository.findByUsername(testAdmin).orElse(null);
         if (userAdmin != null)
             userRepository.delete(userAdmin);
+    }
+    String loginUser(String username) throws Exception {
+        String loginBody = "{\"username\":\"" + username + "\", \"password\":\"" + testPassword + "\"}";
+        MvcResult rv = mvc.perform(
+                post("/api/auth/signin")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(loginBody))
+                .andExpect(status().is2xxSuccessful())
+                .andReturn();
+        JwtResponse response = objectMapper.readValue(rv.getResponse().getContentAsString(), JwtResponse.class);
+        String authHeader = "Bearer " + response.getAccessToken();
+        return authHeader;
+    }
+    Long createTestSmoothie(String name) throws Exception {
+        deleteTestSmoothie(name);
+        String createBody = "{\"name\":\"" + name + "\", \"description\":\"super smoothie\", \"nutritions\":\"TBD\"}";
+        String authHeader = loginUser(testAdmin);
+        mvc.perform(
+                post("/api/smoothie")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .header("Authorization", authHeader)
+                                .content(createBody))
+                .andExpect(status().is2xxSuccessful())
+                .andReturn();
+
+        Smoothie smoothie = smoothieRepository.findByName(name).orElse(null);
+        return smoothie.getId();
+    }
+    void deleteTestSmoothie(String name) {
+        Smoothie smoothie = smoothieRepository.findByName(name).orElse(null);
+        if (smoothie == null)
+            return;
+        smoothieRepository.delete(smoothie);
     }
     @Test
     void failedLoginUnknownUser() throws Exception {
@@ -184,5 +219,157 @@ class CsdemoApplicationTests {
         smoothieRepository.delete(smoothie);
         deleteTestUsers();
     }
+
+    // Read existing and non-existing smoothie by unauthenticated user, logged user and logged admin
+    @Test
+    void readSmoothieById_allCombinations() throws Exception {
+        createTestUsers();
+        Long existingId = createTestSmoothie("Smoothie#1");
+        Long unknownId = existingId + 1000;
+        String admToken = loginUser(testAdmin);
+        String usrToken = loginUser(testUser);
+
+        mvc.perform(
+                get("/api/smoothie/" + existingId)
+                                .header("Authorization", admToken))
+                .andExpect(status().is2xxSuccessful());
+        mvc.perform(
+                get("/api/smoothie/" + existingId)
+                                .header("Authorization", usrToken))
+                .andExpect(status().is2xxSuccessful());
+        mvc.perform(
+                get("/api/smoothie/" + existingId))
+                .andExpect(status().is2xxSuccessful());
+        mvc.perform(
+                get("/api/smoothie/" + unknownId)
+                                .header("Authorization", admToken))
+                .andExpect(status().is4xxClientError());
+        mvc.perform(
+                get("/api/smoothie/" + unknownId)
+                                .header("Authorization", usrToken))
+                .andExpect(status().is4xxClientError());
+        mvc.perform(
+                get("/api/smoothie/" + unknownId))
+                .andExpect(status().is4xxClientError());
+
+        deleteTestSmoothie("Smoothie#1");
+        deleteTestUsers();
+    }
+
+    // Read smoothie list by unauthenticated user, logged user and logged admin
+    @Test
+    void readSmoothieList_allCombinations() throws Exception {
+        createTestUsers();
+        createTestSmoothie("Smoothie#1");
+        String admToken = loginUser(testAdmin);
+        String usrToken = loginUser(testUser);
+
+        mvc.perform(
+                get("/api/smoothie/smoothies")
+                                .header("Authorization", admToken))
+                .andExpect(status().is2xxSuccessful());
+        mvc.perform(
+                get("/api/smoothie/smoothies")
+                                .header("Authorization", usrToken))
+                .andExpect(status().is2xxSuccessful());
+        mvc.perform(
+                get("/api/smoothie/smoothies"))
+                .andExpect(status().is2xxSuccessful());
+
+        deleteTestSmoothie("Smoothie#1");
+        deleteTestUsers();
+    }
+    // Edit smoothie (existing and non-existing) by unauthenticated user, logged user and logged admin
+    @Test
+    void editSmoothieById_allCombinations() throws Exception {
+        createTestUsers();
+        Long existingId = createTestSmoothie("Smoothie#1");
+        Long unknownId = existingId + 50;
+        String admToken = loginUser(testAdmin);
+        String usrToken = loginUser(testUser);
+        String changeBody = "{\"name\":\"Smoothie#2\", \"description\":\"super smoothie\", \"nutritions\":\"TBD\"}";
+
+        mvc.perform(
+                put("/api/smoothie/" + existingId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(changeBody)
+                        .header("Authorization", usrToken))
+                .andExpect(status().is4xxClientError());
+        mvc.perform(
+                put("/api/smoothie/" + existingId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(changeBody))
+                .andExpect(status().is4xxClientError());
+        mvc.perform(
+                put("/api/smoothie/" + existingId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(changeBody)
+                        .header("Authorization", admToken))
+                .andExpect(status().is2xxSuccessful());
+        Smoothie smoothie = smoothieRepository.findByName("Smoothie#2").orElse(null);
+        assertThat(smoothie != null);
+
+        mvc.perform(
+                put("/api/smoothie/" + unknownId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(changeBody)
+                        .header("Authorization", usrToken))
+                .andExpect(status().is4xxClientError());
+        mvc.perform(
+                put("/api/smoothie/" + unknownId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(changeBody))
+                .andExpect(status().is4xxClientError());
+        mvc.perform(
+                put("/api/smoothie/" + unknownId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(changeBody)
+                        .header("Authorization", admToken))
+                .andExpect(status().is4xxClientError());
+
+        deleteTestSmoothie("Smoothie#2");
+        deleteTestUsers();
+    }
+    // Edit smoothie (existing and non-existing) by unauthenticated user, logged user and logged admin
+    @Test
+    void deleteSmoothieById_allCombinations() throws Exception {
+        createTestUsers();
+        Long existingId = createTestSmoothie("Smoothie#1");
+        Long unknownId = existingId + 50;
+        String admToken = loginUser(testAdmin);
+        String usrToken = loginUser(testUser);
+
+        mvc.perform(
+                delete("/api/smoothie/" + existingId)
+                        .header("Authorization", usrToken))
+                .andExpect(status().is4xxClientError());
+        mvc.perform(
+                delete("/api/smoothie/" + existingId))
+                .andExpect(status().is4xxClientError());
+        mvc.perform(
+                delete("/api/smoothie/" + existingId)
+                        .header("Authorization", admToken))
+                .andExpect(status().is2xxSuccessful());
+        Smoothie smoothie = smoothieRepository.findByName("Smoothie#2").orElse(null);
+        assertThat(smoothie == null);
+
+        mvc.perform(
+                put("/api/smoothie/" + unknownId)
+                        .header("Authorization", usrToken))
+                .andExpect(status().is4xxClientError());
+        mvc.perform(
+                put("/api/smoothie/" + unknownId))
+                .andExpect(status().is4xxClientError());
+        mvc.perform(
+                put("/api/smoothie/" + unknownId)
+                        .header("Authorization", admToken))
+                .andExpect(status().is4xxClientError());
+
+        deleteTestSmoothie("Smoothie#2");
+        deleteTestUsers();
+    }
+
+
+
 
 }

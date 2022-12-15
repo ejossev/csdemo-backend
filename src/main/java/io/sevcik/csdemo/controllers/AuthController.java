@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -66,10 +67,14 @@ public class AuthController {
                 .map(item -> item.getAuthority())
                 .collect(Collectors.toList());
 
-        return ResponseEntity.ok(new JwtResponse(jwt,
-                userDetails.getId(),
-                userDetails.getUsername(),
-                roles));
+        return ResponseEntity.ok().
+                header(
+                        HttpHeaders.AUTHORIZATION,
+                        jwt)
+                .body(new JwtResponse(jwt,
+                        userDetails.getId(),
+                        userDetails.getUsername(),
+                        roles));
     }
 
     @ApiOperation("Sign-in existing user using username & password")
