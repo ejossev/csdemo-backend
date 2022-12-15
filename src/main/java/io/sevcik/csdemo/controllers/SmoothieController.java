@@ -1,7 +1,7 @@
 package io.sevcik.csdemo.controllers;
 
 import io.sevcik.csdemo.models.Smoothie;
-import io.sevcik.csdemo.payload.request.DescribeSmoothieRequest;
+import io.sevcik.csdemo.payload.SmoothieDescription;
 import io.sevcik.csdemo.payload.response.MessageResponse;
 import io.sevcik.csdemo.repositories.SmoothieRepository;
 import io.swagger.annotations.Api;
@@ -32,7 +32,7 @@ public class SmoothieController {
         Smoothie smoothie = smoothieRepository.findById(id).orElse(null);
         if (smoothie == null)
             return ResponseEntity.notFound().build();
-        return ResponseEntity.ok().body(smoothie);
+        return ResponseEntity.ok().body(SmoothieDescription.fromSmoothie(smoothie));
     }
 
     // TODO: add pagination
@@ -58,49 +58,60 @@ public class SmoothieController {
 
     @ApiOperation("Create smoothie (CREATE)")
     @PostMapping("")
-    public ResponseEntity<?> createSmoothie(@Valid @RequestBody DescribeSmoothieRequest describeSmoothieRequest) {
-        if (smoothieRepository.existsByName(describeSmoothieRequest.getName())) {
+    public ResponseEntity<?> createSmoothie(@Valid @RequestBody SmoothieDescription smoothieDescription) {
+        if (smoothieRepository.existsByName(smoothieDescription.getName())) {
             return ResponseEntity
                     .badRequest()
                     .body(new MessageResponse("Error: Smoothie with given name is already taken!"));
         }
 
         Smoothie smoothie = new Smoothie(
-                describeSmoothieRequest.getName(),
-                describeSmoothieRequest.getDescription(),
-                describeSmoothieRequest.getNutritions()
+                smoothieDescription.getName(),
+                smoothieDescription.getDescription(),
+                smoothieDescription.getNutritions().getCalories(),
+                smoothieDescription.getNutritions().getProteins(),
+                smoothieDescription.getNutritions().getFat(),
+                smoothieDescription.getNutritions().getCarbs()
         );
 
         smoothieRepository.save(smoothie);
-        return ResponseEntity.ok().body(smoothie);
+        return ResponseEntity.ok().body(SmoothieDescription.fromSmoothie(smoothie));
     }
 
     @ApiOperation("Update smoothie details (UPDATE)")
     @PutMapping("/{id:[0-9]+}")
     public ResponseEntity<?> createSmoothie(
-            @Valid @RequestBody DescribeSmoothieRequest describeSmoothieRequest,
+            @Valid @RequestBody SmoothieDescription smoothieDescription,
             @ApiParam(value = "id", required = true) @PathVariable final Long id
     ) {
         Smoothie smoothie = smoothieRepository.findById(id).orElse(null);
         if (smoothie == null)
             return ResponseEntity.notFound().build();
 
-        String newName = describeSmoothieRequest.getName();
+        String newName = smoothieDescription.getName();
         if (!smoothie.getName().equals(newName) && smoothieRepository.existsByName(newName)) {
             return ResponseEntity
                     .badRequest()
                     .body(new MessageResponse("Error: Smoothie with given name is already taken!"));
         }
 
-        if (describeSmoothieRequest.getName() != null)
-            smoothie.setName(describeSmoothieRequest.getName());
-        if (describeSmoothieRequest.getDescription() != null)
-            smoothie.setDescription(describeSmoothieRequest.getDescription());
-        if (describeSmoothieRequest.getNutritions() != null)
-            smoothie.setNutritions(describeSmoothieRequest.getNutritions());
+        if (smoothieDescription.getName() != null)
+            smoothie.setName(smoothieDescription.getName());
+        if (smoothieDescription.getDescription() != null)
+            smoothie.setDescription(smoothieDescription.getDescription());
+        if (smoothieDescription.getNutritions() != null) {
+            if (smoothieDescription.getNutritions().getCalories() != null)
+                smoothie.setCalories(smoothieDescription.getNutritions().getCalories());
+            if (smoothieDescription.getNutritions().getProteins() != null)
+                smoothie.setProteins(smoothieDescription.getNutritions().getProteins());
+            if (smoothieDescription.getNutritions().getCarbs() != null)
+                smoothie.setCarbs(smoothieDescription.getNutritions().getCarbs());
+            if (smoothieDescription.getNutritions().getFat() != null)
+                smoothie.setFat(smoothieDescription.getNutritions().getFat());
+        }
         smoothieRepository.save(smoothie);
 
-        return ResponseEntity.ok().body(smoothie);
+        return ResponseEntity.ok().body(SmoothieDescription.fromSmoothie(smoothie));
     }
 
     @ApiOperation("Delete given smoothie (DELETE)")
