@@ -10,11 +10,11 @@
     </parent>
     <groupId>io.sevcik</groupId>
     <artifactId>csdemo</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.2-SNAPSHOT</version>
     <name>csdemo</name>
     <description>csdemo</description>
     <properties>
-        <java.version>19</java.version>
+        <java.version>17</java.version>
     </properties>
     <dependencies>
         <dependency>
